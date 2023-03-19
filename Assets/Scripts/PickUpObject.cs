@@ -88,7 +88,7 @@ public class PickUpObject : MonoBehaviour
 
         // Pick up for left hand & left hand controller
         if ((!pickedUp && col.gameObject.tag == "LeftHand" && !handsActive && !GameManager.Instance.CheckGrab("left") && OVRInput.Get(OVRInput.RawAxis1D.LIndexTrigger) > 0.9f)
-            || (!pickedUp && col.gameObject.tag == "LeftHand" && handsActive && !GameManager.Instance.CheckGrab("left") && leftOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index)))
+            || (!pickedUp && col.gameObject.tag == "LeftHand" && handsActive && !GameManager.Instance.CheckGrab("left") && IsPinching("left")))
         {
             pickedUp = true;
             controller = col.gameObject.transform;
@@ -98,7 +98,7 @@ public class PickUpObject : MonoBehaviour
             fj.connectedBody = col.gameObject.GetComponent<Rigidbody>();
         // Pickup for right hand & right hand controller
         } else if ((!pickedUp && col.gameObject.tag == "RightHand" && !handsActive && !GameManager.Instance.CheckGrab("right") && OVRInput.Get(OVRInput.RawAxis1D.RIndexTrigger) > 0.9f)
-            || (!pickedUp && col.gameObject.tag == "RightHand" && handsActive && !GameManager.Instance.CheckGrab("right") && rightOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index)))
+            || (!pickedUp && col.gameObject.tag == "RightHand" && handsActive && !GameManager.Instance.CheckGrab("right") && IsPinching("right")))
         {
             pickedUp = true;
             controller = col.gameObject.transform;
@@ -141,6 +141,19 @@ public class PickUpObject : MonoBehaviour
                 GameManager.Instance.SpawnShape("");
             }
         }
+    }
+
+    private List<OVRHand.HandFinger> fingers = new List<OVRHand.HandFinger> { OVRHand.HandFinger.Thumb, OVRHand.HandFinger.Index, OVRHand.HandFinger.Middle, OVRHand.HandFinger.Ring, OVRHand.HandFinger.Pinky };
+    private bool IsPinching(string hand)
+    {
+        for (int i = 0; i < fingers.Count; i++)
+        {
+            // Readings for other fingers around ~0.2
+            //Debug.Log(i.ToString() + " " + leftOVRHand.GetFingerPinchStrength(fingers[i]).ToString());
+            if (hand == "left" && leftOVRHand.GetFingerPinchStrength(fingers[i]) > 0.75f) return true;
+            if (hand == "right" && rightOVRHand.GetFingerPinchStrength(fingers[i]) > 0.75f) return true;
+        }
+        return false;
     }
 
 }
