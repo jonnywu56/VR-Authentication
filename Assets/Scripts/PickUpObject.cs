@@ -14,9 +14,10 @@ public class PickUpObject : MonoBehaviour
     public Transform controller;
 
     // Oculus components
-    private SkinnedMeshRenderer skr;
     private OVRHand leftOVRHand;
     private OVRHand rightOVRHand;
+    private SkinnedMeshRenderer leftSkr;
+    private SkinnedMeshRenderer rightSkr;
 
     // Tracked for throwing
     private List<Vector3> trackedPositions = new List<Vector3>();
@@ -25,9 +26,11 @@ public class PickUpObject : MonoBehaviour
     void Start()
     {
         controller = null;
-        skr = leftHand.GetComponent<SkinnedMeshRenderer>();
         leftOVRHand = leftHand.GetComponent<OVRHand>();
         rightOVRHand = rightHand.GetComponent<OVRHand>();
+        leftSkr = leftHand.GetComponent<SkinnedMeshRenderer>();
+        rightSkr = rightHand.GetComponent<SkinnedMeshRenderer>();
+
     }
 
     // Update is called once per frame
@@ -46,7 +49,7 @@ public class PickUpObject : MonoBehaviour
         // Drop/throw item if needed
         if (pickedUp && controller.gameObject.tag == "LeftHand")
         {
-            bool handsActive = skr.enabled && skr.sharedMesh != null;
+            bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
             if ((!handsActive && !(OVRInput.Get(OVRInput.RawAxis1D.LIndexTrigger) > 0.9f)) || (handsActive && !leftOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index)))
             {
                 Debug.Log("KILL");
@@ -59,7 +62,7 @@ public class PickUpObject : MonoBehaviour
             }
         } else if (pickedUp && controller.gameObject.tag == "RightHand")
         {
-            bool handsActive = skr.enabled && skr.sharedMesh != null;
+            bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
             if ((!handsActive && !(OVRInput.Get(OVRInput.RawAxis1D.RIndexTrigger) > 0.9f)) || (handsActive && !rightOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index)))
             {
                 pickedUp = false;
@@ -75,7 +78,7 @@ public class PickUpObject : MonoBehaviour
     // Hands/controller set to triggers
     private void OnTriggerStay(Collider col)
     {
-        bool handsActive = skr.enabled && skr.sharedMesh != null;
+        bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
         /**
         Debug.Log("STARt");
         Debug.Log(col.gameObject.tag);
@@ -140,6 +143,11 @@ public class PickUpObject : MonoBehaviour
                 GameManager.Instance.DecreaseScore();
                 GameManager.Instance.SpawnShape("");
             }
+        } else if (col.gameObject.tag == "Floor")
+        {
+            Destroy(this.gameObject);
+            GameManager.Instance.DecreaseScore();
+            GameManager.Instance.SpawnShape("");
         }
     }
 

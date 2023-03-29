@@ -40,6 +40,7 @@ public class GameManager : MonoBehaviour
     public GameObject sphere;
 
     public float readsPerSecond = 2;
+    public float replayLength = 30;
     public GameObject replayGroup;
 
     public GameObject cloneParent;
@@ -55,7 +56,8 @@ public class GameManager : MonoBehaviour
     // OVRHand components
     private OVRHand leftOVRHand;
     private OVRHand rightOVRHand;
-    private SkinnedMeshRenderer skr;
+    private SkinnedMeshRenderer leftSkr;
+    private SkinnedMeshRenderer rightSkr;
 
     // OVRSkeleton components
     private OVRSkeleton leftOVRSkeleton;
@@ -110,7 +112,8 @@ public class GameManager : MonoBehaviour
         // initialize input components
         leftOVRHand = leftHand.GetComponent<OVRHand>();
         rightOVRHand = rightHand.GetComponent<OVRHand>();
-        skr = leftHand.GetComponent<SkinnedMeshRenderer>();
+        leftSkr = leftHand.GetComponent<SkinnedMeshRenderer>();
+        rightSkr = rightHand.GetComponent<SkinnedMeshRenderer>();
 
         leftOVRSkeleton = leftHand.GetComponent<OVRSkeleton>();
         rightOVRSkeleton = rightHand.GetComponent<OVRSkeleton>();
@@ -199,7 +202,7 @@ public class GameManager : MonoBehaviour
         }
 
         // change controller display if needed
-        bool handsActive = skr.enabled && skr.sharedMesh != null;
+        bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
         if (handsActive)
         {
             if (leftController.GetComponent<MeshRenderer>().enabled == true)
@@ -381,12 +384,14 @@ public class GameManager : MonoBehaviour
                 replayTargetList.Add(replayGroup.transform.GetChild(i).gameObject);
             }
 
+            //OVRSkeleton leftReplayHand = replayGroup.transform.GetChild(1).gameObject.GetComponent<OVRSkeleton>();
             OVRSkeleton leftReplayHand = replayGroup.transform.GetChild(1).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
             for (int i = (int)leftReplayHand.GetCurrentStartBoneId(); i < (int)leftReplayHand.GetCurrentEndBoneId(); i++)
             {
                 replayTargetBoneList.Add(leftReplayHand.Bones[i]);
             }
 
+            //OVRSkeleton rightReplayHand = replayGroup.transform.GetChild(2).gameObject.GetComponent<OVRSkeleton>();
             OVRSkeleton rightReplayHand = replayGroup.transform.GetChild(2).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
             for (int i = (int)rightReplayHand.GetCurrentStartBoneId(); i < (int)rightReplayHand.GetCurrentEndBoneId(); i++)
             {
@@ -400,6 +405,13 @@ public class GameManager : MonoBehaviour
             var replayValues = replayData[curLine].Split(",").Where(x => x != "").ToList();
             Debug.Log(replayData[curLine]);
             curLine++;
+
+            if (float.Parse(replayValues[0]) > replayLength)
+            {
+                curLine = 10000000;
+                ReplayCountdown();
+                return;
+            }
 
             for (int i = 0; i < replayTargetList.Count; i++)
             {
