@@ -220,15 +220,10 @@ public class OVRSkeleton : MonoBehaviour
 
     private void Start()
     {
-        //Debug.LogWarning("INITIALIZE");
         if (ShouldInitialize())
         {
             Initialize();
-        } else
-        {
-            //Debug.LogWarning("FAILED");
         }
-        //Debug.LogWarning(this.name+Bones.Count.ToString());
     }
 
     private bool ShouldInitialize()
@@ -271,7 +266,6 @@ public class OVRSkeleton : MonoBehaviour
 
             IsInitialized = true;
         }
-        Debug.LogWarning(this.name + Bones.Count);
     }
 
     protected virtual Transform GetBoneTransform(BoneId boneId) => null;
@@ -446,7 +440,7 @@ public class OVRSkeleton : MonoBehaviour
     private void Update()
     {
         if (!_shouldUpdate) return;
-        //Debug.LogWarning(this.name + Bones.Count.ToString());
+
         if (ShouldInitialize())
         {
             Initialize();

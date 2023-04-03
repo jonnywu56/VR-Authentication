@@ -79,15 +79,6 @@ public class PickUpObject : MonoBehaviour
     private void OnTriggerStay(Collider col)
     {
         bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
-        /**
-        Debug.Log("STARt");
-        Debug.Log(col.gameObject.tag);
-        Debug.Log(!pickedUp);
-        Debug.Log(handsActive);
-        Debug.Log(!GameManager.Instance.CheckGrab("left"));
-        Debug.Log(leftOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index));
-        Debug.Log(!pickedUp && col.gameObject.tag == "LeftHand" && handsActive && !GameManager.Instance.CheckGrab("left") && leftOVRHand.GetFingerIsPinching(OVRHand.HandFinger.Index));
-        **/
 
         // Pick up for left hand & left hand controller
         if ((!pickedUp && col.gameObject.tag == "LeftHand" && !handsActive && !GameManager.Instance.CheckGrab("left") && OVRInput.Get(OVRInput.RawAxis1D.LIndexTrigger) > 0.9f)
@@ -122,12 +113,12 @@ public class PickUpObject : MonoBehaviour
             {
                 Destroy(this.gameObject);
                 GameManager.Instance.IncreaseScore();
-                GameManager.Instance.SpawnShape("");
+                GameManager.Instance.SpawnShape();
             } else
             {
                 Destroy(this.gameObject);
                 GameManager.Instance.DecreaseScore();
-                GameManager.Instance.SpawnShape("");
+                GameManager.Instance.SpawnShape();
             }
         } else if (col.gameObject.tag == "SphereBase")
         {
@@ -135,20 +126,25 @@ public class PickUpObject : MonoBehaviour
             {
                 Destroy(this.gameObject);
                 GameManager.Instance.IncreaseScore();
-                GameManager.Instance.SpawnShape("");
+                GameManager.Instance.SpawnShape();
             }
             else
             {
                 Destroy(this.gameObject);
                 GameManager.Instance.DecreaseScore();
-                GameManager.Instance.SpawnShape("");
+                GameManager.Instance.SpawnShape();
             }
         } else if (col.gameObject.tag == "Floor")
         {
             Destroy(this.gameObject);
             GameManager.Instance.DecreaseScore();
-            GameManager.Instance.SpawnShape("");
+            GameManager.Instance.SpawnShape();
         }
+    }
+
+    void OnDestroy()
+    {
+        pickedUp = false;
     }
 
     private List<OVRHand.HandFinger> fingers = new List<OVRHand.HandFinger> { OVRHand.HandFinger.Thumb, OVRHand.HandFinger.Index, OVRHand.HandFinger.Middle, OVRHand.HandFinger.Ring, OVRHand.HandFinger.Pinky };
@@ -157,7 +153,6 @@ public class PickUpObject : MonoBehaviour
         for (int i = 0; i < fingers.Count; i++)
         {
             // Readings for other fingers around ~0.2
-            //Debug.Log(i.ToString() + " " + leftOVRHand.GetFingerPinchStrength(fingers[i]).ToString());
             if (hand == "left" && leftOVRHand.GetFingerPinchStrength(fingers[i]) > 0.75f) return true;
             if (hand == "right" && rightOVRHand.GetFingerPinchStrength(fingers[i]) > 0.75f) return true;
         }

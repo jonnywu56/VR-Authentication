@@ -11,46 +11,68 @@ public class GameManager : MonoBehaviour
     // Singleton
     public static GameManager Instance { get; private set; }
 
+
     // Toggle for different modes
-    public bool isLogging = false;
-    public bool isDebugMode = false;
-    public bool isReplay = false;
-    public string replayFileName;
+    [Serializable]
+    public class ExperimentVars
+    {
+        public bool isLogging = false;
+        public bool isDetailedMode = false;
+        public string loggingFileName;
+        public string replayFileName;
+
+        public float readsPerSecond = 2;
+        public float gameLength = 30;
+        public float replayLength = 30;
+        public GameObject replayGroup;
+        public GameObject cloneParent;
+    }
+    public ExperimentVars experimentVars = new ExperimentVars();
 
     // Oculus inputs
-    public GameObject cameraRig;
-    public GameObject head;
-    public GameObject leftHand;
-    public GameObject rightHand;
-    public GameObject leftEye;
-    public GameObject rightEye;
+    [Serializable]
+    public class OculusInputs
+    {
+        public GameObject cameraRig;
+        public GameObject head;
+        public GameObject leftHand;
+        public GameObject rightHand;
+        public GameObject leftEye;
+        public GameObject rightEye;
+    }
+    public OculusInputs oculusInputs = new OculusInputs();
 
-    // Display wall for stats
-    public GameObject loggingText;
-    public GameObject gameText;
-    public GameObject replayText;
-    public GameObject cubeBin;
-    public GameObject sphereBin;
-    public GameObject table;
+    // Props
+    [Serializable]
+    public class Props
+    {
+        public GameObject gameText;
+        public GameObject lobbyText;
+        public GameObject loggingText;
+        public GameObject replayText;
+        public GameObject cubeBin;
+        public GameObject sphereBin;
+        public GameObject table;
+        public GameObject leftController;
+        public GameObject rightController;
+        public GameObject cube;
+        public GameObject sphere;
+    }
+    public Props props = new Props();
 
-    // Game settings
-    public GameObject leftController;
-    public GameObject rightController;
-    public GameObject cube;
-    public GameObject sphere;
 
-    public float readsPerSecond = 2;
-    public float replayLength = 30;
-    public GameObject replayGroup;
-
-    public GameObject cloneParent;
-    public float gravity = 1.0f;
-    public float clickRate = 0.2f;
-    public float boxHeight = 1.0f;
-    public float tableHeight = 1.5f;
-    public Vector3 boxLocation = new Vector3(1, 0, 0);
-    public Vector3 tableLocation = new Vector3(0, 1, 0.75f);
-    public Vector3 spawnPoint;
+    [Serializable]
+    public class GameVars
+    {
+        public float gravity = 1.0f;
+        public float boxHeight = 1.0f;
+        public float tableHeight = 0.1f;
+        public Vector3 boxLocation = new Vector3(1, 0, 0);
+        public Vector3 tableLocation = new Vector3(0, 1, 0.75f);
+        public Vector3 spawnLocation = new Vector3(0, 2, 0.4f);
+        public Vector3 cameraLocation = new Vector3(0, 2, 0);
+    }
+    public GameVars gameVars = new GameVars();
 
 
     // OVRHand components
@@ -67,13 +89,23 @@ public class GameManager : MonoBehaviour
     private OVREyeGaze leftOVREyeGaze;
     private OVREyeGaze rightOVREyeGaze;
 
+    // Game mode
+    public enum GameMode
+    {
+        Lobby,
+        Game,
+        Replay
+    }
+    private GameMode gameMode = GameMode.Lobby;
+
     // Game variables
     private List<TMP_Text> wallText;
     private static int score = 0;
-    private float nextClick = 0f;
     private bool leftHandGrabbed = false;
     private bool rightHandGrabbed = false;
-    private int replayCounter = 3;
+    private bool replayActive = false;
+    private bool replayDone = false;
+    private int shapeNum = 0;
 
     // IO variables
     private string path;
@@ -100,93 +132,59 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
+        // initialize camera location
+        oculusInputs.cameraRig.transform.position = gameVars.cameraLocation;
+
         // initialize object locations
-        cubeBin.transform.localPosition = boxLocation;
-        cubeBin.transform.localScale = new Vector3(1, boxHeight, 1);
-        sphereBin.transform.localPosition = new Vector3(-boxLocation.x, boxLocation.y, boxLocation.z);
-        sphereBin.transform.localScale = new Vector3(1, boxHeight, 1);
-        table.transform.localPosition = tableLocation;
-        table.transform.localScale = new Vector3(1, tableHeight, 1);
+        props.cubeBin.transform.localPosition = gameVars.boxLocation;
+        props.cubeBin.transform.localScale = new Vector3(1, gameVars.boxHeight, 1);
+        props.sphereBin.transform.localPosition = new Vector3(-gameVars.boxLocation.x, gameVars.boxLocation.y, gameVars.boxLocation.z);
+        props.sphereBin.transform.localScale = new Vector3(1, gameVars.boxHeight, 1);
+        props.table.transform.localPosition = gameVars.tableLocation;
+        props.table.transform.localScale = new Vector3(1, gameVars.tableHeight, 1);
+        
 
 
         // initialize input components
-        leftOVRHand = leftHand.GetComponent<OVRHand>();
-        rightOVRHand = rightHand.GetComponent<OVRHand>();
-        leftSkr = leftHand.GetComponent<SkinnedMeshRenderer>();
-        rightSkr = rightHand.GetComponent<SkinnedMeshRenderer>();
+        leftOVRHand = oculusInputs.leftHand.GetComponent<OVRHand>();
+        rightOVRHand = oculusInputs.rightHand.GetComponent<OVRHand>();
+        leftSkr = oculusInputs.leftHand.GetComponent<SkinnedMeshRenderer>();
+        rightSkr = oculusInputs.rightHand.GetComponent<SkinnedMeshRenderer>();
 
-        leftOVRSkeleton = leftHand.GetComponent<OVRSkeleton>();
-        rightOVRSkeleton = rightHand.GetComponent<OVRSkeleton>();
+        leftOVRSkeleton = oculusInputs.leftHand.GetComponent<OVRSkeleton>();
+        rightOVRSkeleton = oculusInputs.rightHand.GetComponent<OVRSkeleton>();
 
-        leftOVREyeGaze = leftEye.GetComponent<OVREyeGaze>();
-        rightOVREyeGaze = rightEye.GetComponent<OVREyeGaze>();
-
-        // exit if replaying, start text countdown and replay
-        if (isReplay)
-        {
-            cameraRig.transform.position = new Vector3(0, 2, -3);
-            leftController.SetActive(false);
-            rightController.SetActive(false);
-            replayText.SetActive(true);
-
-            Invoke("ReadData", 0);
-            return;
-        }
+        leftOVREyeGaze = oculusInputs.leftEye.GetComponent<OVREyeGaze>();
+        rightOVREyeGaze = oculusInputs.rightEye.GetComponent<OVREyeGaze>();
 
         // initialize game variables
-        Physics.gravity = new Vector3(0, -1 * gravity, 0);
+        Physics.gravity = new Vector3(0, -1 * gameVars.gravity, 0);
 
-        // initialize info for stats wall
-        wallText = new List<TMP_Text>();
-        if (isDebugMode)
-        {
-            loggingText.SetActive(true);
-            
-            for (int i = 0; i < loggingText.transform.childCount; i++)
-            {
-                wallText.Add(loggingText.transform.GetChild(i).GetComponent<TMP_Text>());
-            }
-        } else
-        {
-            gameText.SetActive(true);
-            for (int i = 0; i < gameText.transform.childCount; i++)
-            {
-                wallText.Add(gameText.transform.GetChild(i).GetComponent<TMP_Text>());
-            }
-        }
+        StartLobby();
     }
 
-    // Update is called once per frame
-    void Update()
+    public void StartGame()
     {
-        if (isReplay && startTime == 0 && (leftOVRHand.GetFingerPinchStrength(OVRHand.HandFinger.Index) > 0.9f || rightOVRHand.GetFingerPinchStrength(OVRHand.HandFinger.Index) > 0.9f))
-        {
-            startTime = Time.time;
-            Invoke("ReplayCountdown", 0f);
-            Invoke("ReplayCountdown", 1.0f);
-            Invoke("ReplayCountdown", 2.0f);
-            Invoke("ReplayCountdown", 3.0f);
-            InvokeRepeating("ReplayData", 3.0f, 1 / readsPerSecond);
-            return;
-        }
+        gameMode = GameMode.Game;
 
-        if (isReplay)
-        {
-            return;
-        }
+        props.gameText.SetActive(!experimentVars.isDetailedMode);
+        props.lobbyText.SetActive(false);
+        props.loggingText.SetActive(experimentVars.isDetailedMode);
+        props.replayText.SetActive(false);
 
-        // begin experience & logging
-        if (startTime == 0 && (leftOVRHand.GetFingerPinchStrength(OVRHand.HandFinger.Index) > 0.9f || rightOVRHand.GetFingerPinchStrength(OVRHand.HandFinger.Index) > 0.9f))
-        {
-            startTime = Time.time;
-            SpawnShape("");
+        startTime = Time.time;
+        score = 0;
+        shapeNum = 0;
+        SpawnShape();
 
-            if (isLogging)
-            {
-            string dataName = "data_v1_";
+        if (experimentVars.isLogging)
+        {
+            string dataName = experimentVars.loggingFileName;
+            if (dataName == "") dataName = "data";
             string timeName = DateTime.Now.ToString("yyyy-MM-ddTHH-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
 
-            path = @"C:\Users\jonny\VR Authentication\Assets\Data\" + dataName + timeName + ".txt";
+            path = @"C:\Users\jonny\VR Authentication\Assets\Data\" + dataName + "_" + timeName + ".txt";
+            
 
             if (!File.Exists(path))
             {
@@ -197,115 +195,205 @@ public class GameManager : MonoBehaviour
 
             }
             InitializeData();
-            InvokeRepeating("WriteData", 0, 1 / readsPerSecond);
-            }
+            InvokeRepeating("WriteData", 0, 1 / experimentVars.readsPerSecond);
         }
+    }
 
-        // change controller display if needed
+    void UpdateGame()
+    {
+        float curTime = Time.time - startTime;
+
+        // Update hand representation when controllers present
         bool handsActive = (leftSkr.enabled && leftSkr.sharedMesh != null) || (rightSkr.enabled && rightSkr.sharedMesh != null);
         if (handsActive)
         {
-            if (leftController.GetComponent<MeshRenderer>().enabled == true)
+            if (props.leftController.GetComponent<MeshRenderer>().enabled == true)
             {
-                leftController.GetComponent<MeshRenderer>().enabled = false;
-                rightController.GetComponent<MeshRenderer>().enabled = false;
+                props.leftController.GetComponent<MeshRenderer>().enabled = false;
+                props.rightController.GetComponent<MeshRenderer>().enabled = false;
             }
         }
         else
         {
-            if (leftController.GetComponent<MeshRenderer>().enabled == false)
+            if (props.leftController.GetComponent<MeshRenderer>().enabled == false)
             {
-                leftController.GetComponent<MeshRenderer>().enabled = true;
-                rightController.GetComponent<MeshRenderer>().enabled = true;
+                props.leftController.GetComponent<MeshRenderer>().enabled = true;
+                props.rightController.GetComponent<MeshRenderer>().enabled = true;
             }
         }
 
-        UpdateWall();
-    }
-
-    // Update text on display wall
-    void UpdateWall()
-    {
-        if (isDebugMode)
+        // Update text on front wall
+        if (!experimentVars.isDetailedMode)
         {
-            wallText[0].text = "Head Position: " + head.transform.position.ToString();
-            wallText[1].text = "Left Hand Position: " + leftHand.transform.position.ToString();
-            wallText[2].text = "Right Hand Position: " + rightHand.transform.position.ToString();
-
-            wallText[3].text = "Left Eye Rotation: " + leftEye.transform.eulerAngles.ToString();
-            wallText[4].text = "Right Eye Rotation: " + rightEye.transform.eulerAngles.ToString();
-
-            wallText[5].text = "Head Rotation: " + head.transform.eulerAngles.ToString();
-            wallText[6].text = "Left Hand Rotation: " + leftHand.transform.eulerAngles.ToString();
-            wallText[7].text = "Right Hand Rotation: " + rightHand.transform.eulerAngles.ToString();
-
-            wallText[8].text = "Hands Active? " + (leftHand.GetComponent<SkinnedMeshRenderer>().enabled && leftHand.GetComponent<SkinnedMeshRenderer>().sharedMesh != null).ToString();
-
-            wallText[9].text = "Time: " + (Time.time-startTime).ToString("G4");
-            wallText[10].text = "Score: " + score.ToString();
+            props.gameText.transform.GetChild(1).GetComponent<TMP_Text>().text = "Time: " + (Time.time - startTime).ToString("G4");
+            props.gameText.transform.GetChild(2).GetComponent<TMP_Text>().text = "Score: " + score.ToString();
         } else
         {
-            if (startTime == 0)
-            {
-                wallText[1].text = "Pinch Index/Thumb together to begin!";
-                wallText[2].text = "";
-            } else
-            {
-                wallText[1].text = "Time: " + (Time.time - startTime).ToString("G4");
-                wallText[2].text = "Score: " + score.ToString();
-            }
+            props.loggingText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Head Position: " + oculusInputs.head.transform.position.ToString();
+            props.loggingText.transform.GetChild(1).GetComponent<TMP_Text>().text = "Left Hand Position: " + oculusInputs.leftHand.transform.position.ToString();
+            props.loggingText.transform.GetChild(2).GetComponent<TMP_Text>().text = "Right Hand Position: " + oculusInputs.rightHand.transform.position.ToString();
+
+            props.loggingText.transform.GetChild(3).GetComponent<TMP_Text>().text = "Left Eye Rotation: " + oculusInputs.leftEye.transform.eulerAngles.ToString();
+            props.loggingText.transform.GetChild(4).GetComponent<TMP_Text>().text = "Right Eye Rotation: " + oculusInputs.rightEye.transform.eulerAngles.ToString();
+
+            props.loggingText.transform.GetChild(5).GetComponent<TMP_Text>().text = "Head Rotation: " + oculusInputs.head.transform.eulerAngles.ToString();
+            props.loggingText.transform.GetChild(6).GetComponent<TMP_Text>().text = "Left Hand Rotation: " + oculusInputs.leftHand.transform.eulerAngles.ToString();
+            props.loggingText.transform.GetChild(7).GetComponent<TMP_Text>().text = "Right Hand Rotation: " + oculusInputs.rightHand.transform.eulerAngles.ToString();
+
+            props.loggingText.transform.GetChild(8).GetComponent<TMP_Text>().text = "Hands Active? " + (oculusInputs.leftHand.GetComponent<SkinnedMeshRenderer>().enabled && oculusInputs.leftHand.GetComponent<SkinnedMeshRenderer>().sharedMesh != null).ToString();
+
+            props.loggingText.transform.GetChild(9).GetComponent<TMP_Text>().text = "Time: " + (Time.time - startTime).ToString("G4");
+            props.loggingText.transform.GetChild(10).GetComponent<TMP_Text>().text = "Score: " + score.ToString();
+        }
+
+        if (curTime > experimentVars.gameLength)
+        {
+            EndGame();
+        }
+        
+    }
+
+    void EndGame()
+    {
+        gameMode = GameMode.Lobby;
+
+        SetGrab("left", false);
+        SetGrab("right", false);
+        Destroy(experimentVars.cloneParent.transform.GetChild(0).gameObject);
+        CancelInvoke("WriteData");
+
+        StartLobby();
+    }
+
+    void StartLobby()
+    {
+        gameMode = GameMode.Lobby;
+
+        props.gameText.SetActive(false);
+        props.lobbyText.SetActive(true);
+        props.loggingText.SetActive(false);
+        props.replayText.SetActive(false);
+
+        for (int i = 0; i < props.table.transform.childCount; i++)
+        {
+            props.table.transform.GetChild(i).gameObject.SetActive(true);
+        }
+    }
+
+    public void EndLobby()
+    {
+        for (int i = 0; i < props.table.transform.childCount; i++)
+        {
+            props.table.transform.GetChild(i).gameObject.SetActive(false);
+        }
+    }
+
+    //start text countdown and replay
+    public void StartReplay()
+    {
+        gameMode = GameMode.Replay;
+
+        props.gameText.SetActive(false);
+        props.lobbyText.SetActive(false);
+        props.loggingText.SetActive(false);
+        props.replayText.SetActive(true);
+
+        experimentVars.replayGroup.SetActive(true);
+        replayActive = false;
+        curLine = 0;
+
+        oculusInputs.cameraRig.transform.position = new Vector3(0, 2, -3);
+        props.leftController.SetActive(false);
+        props.rightController.SetActive(false);
+
+        Invoke("ReadData", 0);
+
+        startTime = Time.time;
+    }
+
+    void UpdateReplay()
+    {
+        float curTime = Time.time - startTime;
+
+        if (curTime < 1.0)
+        {
+            props.replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay beginning in 3";
+            props.replayText.transform.GetChild(1).GetComponent<TMP_Text>().text = "";
+            props.replayText.transform.GetChild(2).GetComponent<TMP_Text>().text = "";
+            props.replayText.transform.GetChild(3).GetComponent<TMP_Text>().text = "";
+        } else if (curTime < 2.0)
+        {
+            props.replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay beginning in 2";
+        } else if (curTime < 3.0)
+        {
+            props.replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay beginning in 1";
+        } else if (curTime >= 3 && curTime < 3 + experimentVars.replayLength && !replayActive)
+        {
+            replayActive = true;
+
+            props.replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay in progress";
+            props.replayText.transform.GetChild(1).GetComponent<TMP_Text>().text = "Time: " + (Time.time - startTime).ToString("G4"); ;
+
+            // enable eye rays
+            experimentVars.replayGroup.transform.GetChild(4).gameObject.SetActive(true);
+            experimentVars.replayGroup.transform.GetChild(5).gameObject.SetActive(true);
+
+            InvokeRepeating("ReplayData", 0, 1 / experimentVars.readsPerSecond);
+        } else if (curTime >= 3 && curTime < 3 + experimentVars.replayLength)
+        {
+            props.replayText.transform.GetChild(1).GetComponent<TMP_Text>().text = "Time: " + (Time.time - startTime - 3).ToString("G4"); ;
+        } else if (curTime >= 3 + experimentVars.replayLength)
+        {
+            EndReplay();
+        }
+    }
+
+    void EndReplay()
+    {
+        oculusInputs.cameraRig.transform.position = new Vector3(0, 2, 0);
+
+        //disable eye rays
+        experimentVars.replayGroup.SetActive(false);
+        experimentVars.replayGroup.transform.GetChild(4).gameObject.SetActive(false);
+        experimentVars.replayGroup.transform.GetChild(5).gameObject.SetActive(false);
+
+        CancelInvoke("ReplayData");
+
+        StartLobby();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (gameMode == GameMode.Game)
+        {
+            UpdateGame();
+        } else if (gameMode == GameMode.Replay)
+        {
+            UpdateReplay();
         }
     }
  
     // Create shape
-    public void SpawnShape(string shapeName)
+    public void SpawnShape()
     {
-        if (shapeName == "cube")
-        { 
-            Instantiate(cube, spawnPoint, Quaternion.identity, cloneParent.transform); 
-        } else if (shapeName == "sphere")
+        shapeNum = (shapeNum + 1) % 2;
+        if (shapeNum == 0)
         {
-            Instantiate(sphere, spawnPoint, Quaternion.identity, cloneParent.transform);
-        } else 
+            Instantiate(props.cube, gameVars.spawnLocation, Quaternion.identity, experimentVars.cloneParent.transform);
+        } else
         {
-            if (UnityEngine.Random.Range(0, 2) == 0)
-            {
-                Instantiate(cube, spawnPoint, Quaternion.identity, cloneParent.transform);
-            }
-            else
-            {
-                Instantiate(sphere, spawnPoint, Quaternion.identity, cloneParent.transform);
-            }
-        }
-
-        // Delete oldest shape if too many exist
-        if (cloneParent.transform.childCount > 10)
-        {
-            PickUpObject pu = cloneParent.transform.GetChild(0).gameObject.GetComponent<PickUpObject>();
-            Debug.Log(pu.pickedUp);
-            
-            if (pu.pickedUp)
-            {
-                Debug.Log(pu.controller.gameObject.tag);
-                if (pu.controller.gameObject.tag == "LeftHand")
-                {
-                    leftHandGrabbed = false;
-                } else
-                {
-                    rightHandGrabbed = false;
-                }
-            }
-            Destroy(cloneParent.transform.GetChild(0).gameObject);
+            Instantiate(props.sphere, gameVars.spawnLocation, Quaternion.identity, experimentVars.cloneParent.transform);
         }
     }
 
     void InitializeData()
     {
-        dataTargetList = new List<GameObject> { head, leftHand, rightHand, leftEye, rightEye };
+        dataTargetList = new List<GameObject> { oculusInputs.head, oculusInputs.leftHand, oculusInputs.rightHand, oculusInputs.leftEye, oculusInputs.rightEye };
         
         using (StreamWriter sw = File.AppendText(path))
         {
-            List<string> headers = new List<string>{ "head","leftHand","rightHand","leftEye","rightEye" };
+            List<string> headers = new List<string>{"shape", "head","leftHand","rightHand","leftEye","rightEye" };
             for (int i = (int)leftOVRSkeleton.GetCurrentStartBoneId(); i < (int)leftOVRSkeleton.GetCurrentEndBoneId(); i++)
             {
                 dataTargetBoneList.Add(leftOVRSkeleton.Bones[i]);
@@ -317,7 +405,7 @@ public class GameManager : MonoBehaviour
                 headers.Add("right_" + OVRSkeleton.BoneLabelFromBoneId(OVRSkeleton.SkeletonType.HandRight, rightOVRSkeleton.Bones[i].Id));
             }
 
-            List<string> newHeaders = new List<string> {"time"};
+            List<string> newHeaders = new List<string> {"time", "score", "shapeNum"};
             for (int i = 0; i < headers.Count; i++)
             {
                 string h = headers[i];
@@ -329,6 +417,7 @@ public class GameManager : MonoBehaviour
                 newHeaders.Add(h + "_quaternion_y");
                 newHeaders.Add(h + "_quaternion_z");
             }
+
             string line = String.Join(",", newHeaders);
             sw.WriteLine(line);
             sw.Close();
@@ -342,6 +431,12 @@ public class GameManager : MonoBehaviour
             string line = "";
 
             line += (Time.time-startTime);
+            line += "," + score;
+
+            line += "," + shapeNum.ToString();
+
+            GameObject curShape = experimentVars.cloneParent.transform.GetChild(0).gameObject;
+            line += ParseV3(curShape);
 
             for (int i = 0; i < dataTargetList.Count; i++)
             {
@@ -353,6 +448,7 @@ public class GameManager : MonoBehaviour
                 line += ParseV3OVRBone(dataTargetBoneList[i]);
             }
 
+
             sw.WriteLine(line);
             sw.Close();
         }
@@ -361,7 +457,9 @@ public class GameManager : MonoBehaviour
 
     void ReadData()
     {
-        path = @"C:\Users\jonny\VR Authentication\Assets\Data\"+replayFileName;
+        if (replayDone) return;
+
+        path = @"C:\Users\jonny\VR Authentication\Assets\Data\"+experimentVars.replayFileName;
         using (StreamReader reader = new StreamReader(new FileStream(path, FileMode.Open)))
         {
             string line;
@@ -376,76 +474,100 @@ public class GameManager : MonoBehaviour
 
     void ReplayData()
     {
-        if (curLine == 0)
+        if (!replayDone)
         {
-            curLine++;
-            for (int i = 0; i < replayGroup.transform.childCount; i++)
+            for (int i = 0; i < experimentVars.replayGroup.transform.childCount; i++)
             {
-                replayTargetList.Add(replayGroup.transform.GetChild(i).gameObject);
+                replayTargetList.Add(experimentVars.replayGroup.transform.GetChild(i).gameObject);
             }
 
-            //OVRSkeleton leftReplayHand = replayGroup.transform.GetChild(1).gameObject.GetComponent<OVRSkeleton>();
-            OVRSkeleton leftReplayHand = replayGroup.transform.GetChild(1).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
+            OVRSkeleton leftReplayHand = experimentVars.replayGroup.transform.GetChild(2).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
+            
             for (int i = (int)leftReplayHand.GetCurrentStartBoneId(); i < (int)leftReplayHand.GetCurrentEndBoneId(); i++)
             {
                 replayTargetBoneList.Add(leftReplayHand.Bones[i]);
             }
 
-            //OVRSkeleton rightReplayHand = replayGroup.transform.GetChild(2).gameObject.GetComponent<OVRSkeleton>();
-            OVRSkeleton rightReplayHand = replayGroup.transform.GetChild(2).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
+            OVRSkeleton rightReplayHand = experimentVars.replayGroup.transform.GetChild(3).GetChild(1).gameObject.GetComponent<OVRSkeleton>();
             for (int i = (int)rightReplayHand.GetCurrentStartBoneId(); i < (int)rightReplayHand.GetCurrentEndBoneId(); i++)
             {
                 replayTargetBoneList.Add(rightReplayHand.Bones[i]);
             }
+
+            replayDone = true;
         }
 
-        if (curLine < numLines)
+        if (curLine > 0 && curLine < numLines)
         {
-            Debug.Log("Currently at " + (Time.time - startTime));
             var replayValues = replayData[curLine].Split(",").Where(x => x != "").ToList();
-            Debug.Log(replayData[curLine]);
-            curLine++;
 
-            if (float.Parse(replayValues[0]) > replayLength)
+            props.replayText.transform.GetChild(2).GetComponent<TMP_Text>().text = "Replay Time: " + float.Parse(replayValues[0]).ToString("G4");
+            props.replayText.transform.GetChild(3).GetComponent<TMP_Text>().text = "Score: " + int.Parse(replayValues[1]);
+
+            if (float.Parse(replayValues[0]) > experimentVars.replayLength)
             {
-                curLine = 10000000;
-                ReplayCountdown();
+                EndReplay();
                 return;
             }
 
+            
             for (int i = 0; i < replayTargetList.Count; i++)
             {
-                int start = 7 * i + 1;
+                int start = 7 * i + 3;
 
-                // left eye
-                if (i == 3)
+                // shape
+                if (i == 0)
                 {
-                    var hp = new Vector3(float.Parse(replayValues[1]), float.Parse(replayValues[2]), float.Parse(replayValues[3]));
+                    int curShapeNum = int.Parse(replayValues[2]);
+
+                    experimentVars.replayGroup.transform.GetChild(0).GetChild((curShapeNum + 1) % 2).position = new Vector3(0, -10, 0);
+                    replayTargetList[i] = experimentVars.replayGroup.transform.GetChild(0).GetChild(curShapeNum).gameObject;
+                }
+
+                // hands
+                if (i == 2 || i == 3)
+                {
+                    Vector3 handPos = new Vector3(float.Parse(replayValues[start]), float.Parse(replayValues[start + 1]), float.Parse(replayValues[start + 2]));
+
+                    // tracking lost on hands
+                    if (handPos == gameVars.cameraLocation)
+                    {
+                        replayTargetList[i].SetActive(false);
+                        continue;
+                    } else
+                    {
+                        replayTargetList[i].SetActive(true);
+                    }
+                }
+                // left eye
+                if (i == 4)
+                {
+                    var hp = new Vector3(float.Parse(replayValues[10]), float.Parse(replayValues[11]), float.Parse(replayValues[12]));
                     var leftEyeVector = new Quaternion(float.Parse(replayValues[start + 3]), float.Parse(replayValues[start + 4]), float.Parse(replayValues[start + 5]), float.Parse(replayValues[start + 6])) * Vector3.forward;
                     RaycastHit leftEyeHit;
                     if (Physics.Raycast(hp, leftEyeVector, out leftEyeHit))
                     {
-                        replayGroup.transform.GetChild(3).position = hp + new Vector3(0.1f, 0, 0);
+                        experimentVars.replayGroup.transform.GetChild(4).position = hp + new Vector3(-0.1f, 0, 0);
 
-                        LineRenderer lr = replayGroup.transform.GetChild(3).GetComponent<LineRenderer>();
-                        lr.SetPosition(0, hp + new Vector3(0.5f, 0, 0));
+                        LineRenderer lr = experimentVars.replayGroup.transform.GetChild(4).GetComponent<LineRenderer>();
+                        lr.SetPosition(0, hp);
                         lr.SetPosition(1, leftEyeHit.point);
                     }
                     continue;
                 }
 
                 // right eye
-                if (i == 4)
+                if (i == 5)
                 {
-                    var hp = new Vector3(float.Parse(replayValues[1]), float.Parse(replayValues[2]), float.Parse(replayValues[3]));
+                    var hp = new Vector3(float.Parse(replayValues[10]), float.Parse(replayValues[11]), float.Parse(replayValues[12]));
                     var rightEyeVector = new Quaternion(float.Parse(replayValues[start + 3]), float.Parse(replayValues[start + 4]), float.Parse(replayValues[start + 5]), float.Parse(replayValues[start + 6])) * Vector3.forward;
                     RaycastHit rightEyeHit;
                     if (Physics.Raycast(hp, rightEyeVector, out rightEyeHit))
                     {
-                        replayGroup.transform.GetChild(4).position = hp + new Vector3(-0.1f, 0, 0);
+                        experimentVars.replayGroup.transform.GetChild(5).position = hp + new Vector3(0.1f, 0, 0);
 
-                        LineRenderer lr = replayGroup.transform.GetChild(4).GetComponent<LineRenderer>();
-                        lr.SetPosition(0, hp + new Vector3(-0.5f, 0, 0));
+                        LineRenderer lr = experimentVars.replayGroup.transform.GetChild(5).GetComponent<LineRenderer>();
+                        lr.SetPosition(0, hp);
                         lr.SetPosition(1, rightEyeHit.point);
                     }
                     continue;
@@ -457,33 +579,21 @@ public class GameManager : MonoBehaviour
 
             for (int i = 0; i < replayTargetBoneList.Count; i++)
             {
-                int start = 7 * (i + replayTargetList.Count) + 1;
+                int start = 7 * (i + replayTargetList.Count) + 3;
 
                 replayTargetBoneList[i].Transform.position = new Vector3(float.Parse(replayValues[start]), float.Parse(replayValues[start + 1]), float.Parse(replayValues[start + 2]));
                 replayTargetBoneList[i].Transform.rotation = new Quaternion(float.Parse(replayValues[start + 3]), float.Parse(replayValues[start + 4]), float.Parse(replayValues[start + 5]), float.Parse(replayValues[start + 6]));
             }
-        } else
-        {
-            ReplayCountdown();
-        }
-    }
 
-    void ReplayCountdown()
-    {
-        replayGroup.SetActive(true);
-        if (replayCounter > 0)
-        {
-            replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay beginning in " + replayCounter.ToString(); 
-        } else if (replayCounter == 0)
-        {
-            replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay in progress";
-        } else
-        {
-            replayText.transform.GetChild(0).GetComponent<TMP_Text>().text = "Replay finished";
+        } 
+
+        if (curLine >= numLines) {
+            EndReplay();
         }
 
-        replayCounter -= 1;
+        curLine++;
     }
+
 
     public void IncreaseScore()
     {

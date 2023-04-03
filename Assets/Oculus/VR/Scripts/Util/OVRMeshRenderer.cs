@@ -49,6 +49,8 @@ public class OVRMeshRenderer : MonoBehaviour
 	}
 
 	[SerializeField]
+	private bool _alwaysRender;
+	[SerializeField]
 	private IOVRMeshRendererDataProvider _dataProvider;
 	[SerializeField]
 	private OVRMesh _ovrMesh;
@@ -97,7 +99,7 @@ public class OVRMeshRenderer : MonoBehaviour
 			return;
 		}
 
-		if (ShouldInitialize())
+		if (ShouldInitialize() || _alwaysRender)
 		{
 			Initialize();
 		}
@@ -157,6 +159,12 @@ public class OVRMeshRenderer : MonoBehaviour
 			Initialize();
 		}
 #endif
+
+		if (_alwaysRender)
+        {
+			_skinnedMeshRenderer.enabled = true;
+			return;
+        }
 
 		IsDataValid = false;
 		IsDataHighConfidence = false;

@@ -123,6 +123,7 @@ public class OVREyeGaze : MonoBehaviour
             Debug.LogWarning($"[{nameof(OVREyeGaze)}] Failed to start eye tracking.");
             return false;
         }
+        
 
         return true;
     }
