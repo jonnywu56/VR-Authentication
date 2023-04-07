@@ -1718,7 +1718,7 @@ Transform:
   m_GameObject: {fileID: 462662783}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: -2, z: 0}
-  m_LocalScale: {x: 10, y: 10, z: 10}
+  m_LocalScale: {x: 8, y: 8, z: 8}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 342667184}
@@ -7457,10 +7457,10 @@ MonoBehaviour:
     isLogging: 1
     isDetailedMode: 0
     loggingFileName: 
-    replayFileName: t2.txt
-    readsPerSecond: 10
-    gameLength: 10
-    replayLength: 10
+    replayFileName: joseph_1.txt
+    readsPerSecond: 30
+    gameLength: 30
+    replayLength: 30
     replayGroup: {fileID: 485789455}
     cloneParent: {fileID: 1950934191}
   oculusInputs:

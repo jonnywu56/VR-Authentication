@@ -302,7 +302,7 @@ public class GameManager : MonoBehaviour
         replayActive = false;
         curLine = 0;
 
-        oculusInputs.cameraRig.transform.position = new Vector3(0, 2, -3);
+        oculusInputs.cameraRig.transform.position = new Vector3(0, 2, -2);
         props.leftController.SetActive(false);
         props.rightController.SetActive(false);
 
@@ -390,6 +390,7 @@ public class GameManager : MonoBehaviour
     void InitializeData()
     {
         dataTargetList = new List<GameObject> { oculusInputs.head, oculusInputs.leftHand, oculusInputs.rightHand, oculusInputs.leftEye, oculusInputs.rightEye };
+        dataTargetBoneList = new List<OVRBone>();
         
         using (StreamWriter sw = File.AppendText(path))
         {
