@@ -7457,7 +7457,7 @@ MonoBehaviour:
     isLogging: 1
     isDetailedMode: 0
     loggingFileName: 
-    replayFileName: joseph_1.txt
+    replayFileName: group3/curtis_repl_denis_3.txt
     readsPerSecond: 30
     gameLength: 30
     replayLength: 30
